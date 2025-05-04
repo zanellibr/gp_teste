@@ -1,0 +1,569 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="initial-scale=1,user-scalable=no,maximum-scale=1,width=device-width">
+        <meta name="mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <link rel="stylesheet" href="css/leaflet.css">
+        <link rel="stylesheet" href="css/L.Control.Layers.Tree.css">
+        <link rel="stylesheet" href="css/qgis2web.css">
+        <link rel="stylesheet" href="css/fontawesome-all.min.css">
+        <link rel="stylesheet" href="css/leaflet-search.css">
+        <link rel="stylesheet" href="css/filter.css">
+<link rel="stylesheet" href="css/nouislider.min.css">
+        <link rel="stylesheet" href="css/leaflet-measure.css">
+        <style>
+        #map {
+            width: 768px;
+            height: 955px;
+        }
+        </style>
+        <title></title>
+    </head>
+    <body>
+        <div id="map">
+        </div>
+        <script src="js/qgis2web_expressions.js"></script>
+        <script src="js/leaflet.js"></script>
+        <script src="js/L.Control.Layers.Tree.min.js"></script>
+        <script src="js/leaflet.rotatedMarker.js"></script>
+        <script src="js/leaflet.pattern.js"></script>
+        <script src="js/leaflet-hash.js"></script>
+        <script src="js/Autolinker.min.js"></script>
+        <script src="js/rbush.min.js"></script>
+        <script src="js/labelgun.min.js"></script>
+        <script src="js/labels.js"></script>
+        <script src="js/leaflet-measure.js"></script>
+        <script src="js/leaflet-search.js"></script>
+        <script src="js/tailDT.js"></script>
+<script src="js/nouislider.min.js"></script>
+<script src="js/wNumb.js"></script>
+        <script src="data/unesp_0.js"></script>
+        <script>
+        var highlightLayer;
+        function highlightFeature(e) {
+            highlightLayer = e.target;
+
+            if (e.target.feature.geometry.type === 'LineString' || e.target.feature.geometry.type === 'MultiLineString') {
+              highlightLayer.setStyle({
+                color: '#ffff00',
+              });
+            } else {
+              highlightLayer.setStyle({
+                fillColor: '#ffff00',
+                fillOpacity: 1
+              });
+            }
+        }
+        var map = L.map('map', {
+            zoomControl:false, maxZoom:28, minZoom:1
+        }).fitBounds([[-22.121822024045766,-51.407652378668594],[-22.121788670610496,-51.40762556992629]]);
+        var hash = new L.Hash(map);
+        map.attributionControl.setPrefix('<a href="https://github.com/tomchadwin/qgis2web" target="_blank">qgis2web</a> &middot; <a href="https://leafletjs.com" title="A JS library for interactive maps">Leaflet</a> &middot; <a href="https://qgis.org">QGIS</a>');
+        var autolinker = new Autolinker({truncate: {length: 30, location: 'smart'}});
+        // remove popup's row if "visible-with-data"
+        function removeEmptyRowsFromPopupContent(content, feature) {
+         var tempDiv = document.createElement('div');
+         tempDiv.innerHTML = content;
+         var rows = tempDiv.querySelectorAll('tr');
+         for (var i = 0; i < rows.length; i++) {
+             var td = rows[i].querySelector('td.visible-with-data');
+             var key = td ? td.id : '';
+             if (td && td.classList.contains('visible-with-data') && feature.properties[key] == null) {
+                 rows[i].parentNode.removeChild(rows[i]);
+             }
+         }
+         return tempDiv.innerHTML;
+        }
+        // add class to format popup if it contains media
+		function addClassToPopupIfMedia(content, popup) {
+			var tempDiv = document.createElement('div');
+			tempDiv.innerHTML = content;
+			if (tempDiv.querySelector('td img')) {
+				popup._contentNode.classList.add('media');
+					// Delay to force the redraw
+					setTimeout(function() {
+						popup.update();
+					}, 10);
+			} else {
+				popup._contentNode.classList.remove('media');
+			}
+		}
+        var zoomControl = L.control.zoom({
+            position: 'topleft'
+        }).addTo(map);
+        var measureControl = new L.Control.Measure({
+            position: 'topleft',
+            primaryLengthUnit: 'meters',
+            secondaryLengthUnit: 'kilometers',
+            primaryAreaUnit: 'sqmeters',
+            secondaryAreaUnit: 'hectares'
+        });
+        measureControl.addTo(map);
+        document.getElementsByClassName('leaflet-control-measure-toggle')[0].innerHTML = '';
+        document.getElementsByClassName('leaflet-control-measure-toggle')[0].className += ' fas fa-ruler';
+        var bounds_group = new L.featureGroup([]);
+        function setBounds() {
+            map.setMaxBounds(map.getBounds());
+        }
+        function pop_unesp_0(feature, layer) {
+            layer.on({
+                mouseout: function(e) {
+                    for (var i in e.target._eventParents) {
+                        if (typeof e.target._eventParents[i].resetStyle === 'function') {
+                            e.target._eventParents[i].resetStyle(e.target);
+                        }
+                    }
+                },
+                mouseover: highlightFeature,
+            });
+            var popupContent = '<table>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['id'] !== null ? autolinker.link(String(feature.properties['id']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">nome</th>\
+                        <td>' + (feature.properties['nome'] !== null ? autolinker.link(String(feature.properties['nome']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['cidade'] !== null ? autolinker.link(String(feature.properties['cidade']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['estado'] !== null ? autolinker.link(String(feature.properties['estado']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['pais'] !== null ? autolinker.link(String(feature.properties['pais']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['data'] !== null ? autolinker.link(String(feature.properties['data']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_unesp_0_0() {
+            return {
+                pane: 'pane_unesp_0',
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(114,155,111,1.0)',
+                interactive: true,
+            }
+        }
+        map.createPane('pane_unesp_0');
+        map.getPane('pane_unesp_0').style.zIndex = 400;
+        map.getPane('pane_unesp_0').style['mix-blend-mode'] = 'normal';
+        var layer_unesp_0 = new L.geoJson(json_unesp_0, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_unesp_0',
+            layerName: 'layer_unesp_0',
+            pane: 'pane_unesp_0',
+            onEachFeature: pop_unesp_0,
+            style: style_unesp_0_0,
+        });
+        bounds_group.addLayer(layer_unesp_0);
+        map.addLayer(layer_unesp_0);
+        var overlaysTree = [
+            {label: '<img src="legend/unesp_0.png" /> unesp', layer: layer_unesp_0},]
+        var lay = L.control.layers.tree(null, overlaysTree,{
+            //namedToggle: true,
+            //selectorBack: false,
+            //closedSymbol: '&#8862; &#x1f5c0;',
+            //openedSymbol: '&#8863; &#x1f5c1;',
+            //collapseAll: 'Collapse all',
+            //expandAll: 'Expand all',
+            collapsed: true,
+        });
+        lay.addTo(map);
+        setBounds();
+        map.addControl(new L.Control.Search({
+            layer: layer_unesp_0,
+            initial: false,
+            hideMarkerOnCollapse: true,
+            propertyName: 'cidade'}));
+        document.getElementsByClassName('search-button')[0].className +=
+         ' fa fa-binoculars';
+        var mapDiv = document.getElementById('map');
+        var row = document.createElement('div');
+        row.className="row";
+        row.id="all";
+        row.style.height = "100%";
+        var col1 = document.createElement('div');
+        col1.className="col9";
+        col1.id = "mapWindow";
+        col1.style.height = "99%";
+        col1.style.width = "80%";
+        col1.style.display = "inline-block";
+        var col2 = document.createElement('div');
+        col2.className="col3";
+        col2.id = "menu";
+        col2.style.display = "inline-block";
+        mapDiv.parentNode.insertBefore(row, mapDiv);
+        document.getElementById("all").appendChild(col1);
+        document.getElementById("all").appendChild(col2);
+        col1.appendChild(mapDiv)
+        var Filters = {"data": "date","id": "int","cidade": "str","estado": "str","nome": "str","pais": "str"};
+        function filterFunc() {
+          map.eachLayer(function(lyr){
+          if ("options" in lyr && "dataVar" in lyr["options"]){
+            features = this[lyr["options"]["dataVar"]].features.slice(0);
+            try{
+              for (key in Filters){
+                keyS = key.replace(/[^a-zA-Z0-9_]/g, "")
+                if (Filters[key] == "str" || Filters[key] == "bool"){
+                  var selection = [];
+                  var options = document.getElementById("sel_" + keyS).options
+                  for (var i=0; i < options.length; i++) {
+                    if (options[i].selected) selection.push(options[i].value);
+                  }
+                    try{
+                      if (key in features[0].properties){
+                        for (i = features.length - 1;
+                          i >= 0; --i){
+                          if (selection.indexOf(
+                          features[i].properties[key])<0
+                          && selection.length>0) {
+                          features.splice(i,1);
+                          }
+                        }
+                      }
+                    } catch(err){
+                  }
+                }
+                if (Filters[key] == "int"){
+                  sliderVals =  document.getElementById(
+                    "div_" + keyS).noUiSlider.get();
+                  try{
+                    if (key in features[0].properties){
+                    for (i = features.length - 1; i >= 0; --i){
+                      if (parseInt(features[i].properties[key])
+                          < sliderVals[0]
+                          || parseInt(features[i].properties[key])
+                          > sliderVals[1]){
+                            features.splice(i,1);
+                          }
+                        }
+                      }
+                    } catch(err){
+                    }
+                  }
+                if (Filters[key] == "real"){
+                  sliderVals =  document.getElementById(
+                    "div_" + keyS).noUiSlider.get();
+                  try{
+                    if (key in features[0].properties){
+                    for (i = features.length - 1; i >= 0; --i){
+                      if (features[i].properties[key]
+                          < sliderVals[0]
+                          || features[i].properties[key]
+                          > sliderVals[1]){
+                            features.splice(i,1);
+                          }
+                        }
+                      }
+                    } catch(err){
+                    }
+                  }
+                if (Filters[key] == "date"
+                  || Filters[key] == "datetime"
+                  || Filters[key] == "time"){
+                  try{
+                    if (key in features[0].properties){
+                      HTMLkey = key.replace(/[&\/\\#,+()$~%.'":*?<>{} ]/g, '');
+                      startdate = document.getElementById("dat_" +
+                        HTMLkey + "_date1").value.replace(" ", "T");
+                      enddate = document.getElementById("dat_" +
+                        HTMLkey + "_date2").value.replace(" ", "T");
+                      for (i = features.length - 1; i >= 0; --i){
+                        if (features[i].properties[key] < startdate
+                          || features[i].properties[key] > enddate){
+                          features.splice(i,1);
+                        }
+                      }
+                    }
+                  } catch(err){
+                  }
+                }
+              }
+            } catch(err){
+            }
+          this[lyr["options"]["layerName"]].clearLayers();
+          this[lyr["options"]["layerName"]].addData(features);
+          }
+          })
+        }
+            document.getElementById("menu").appendChild(
+                document.createElement("div"));
+            var div_data_date1 = document.createElement("div");
+            div_data_date1.id = "div_data_date1";
+            div_data_date1.className= "filterselect";
+            document.getElementById("menu").appendChild(div_data_date1);
+            dat_data_date1 = document.createElement('input');
+            dat_data_date1.type = "text";
+            dat_data_date1.id = "dat_data_date1";
+            div_data_date1.appendChild(dat_data_date1);
+            var lab_data_date1 = document.createElement('div');
+            lab_data_date1.innerHTML  = 'data from';
+            lab_data_date1.className = 'filterlabel';
+            document.getElementById("div_data_date1").appendChild(
+                lab_data_date1);
+            var reset_data_date1 = document.createElement('div');
+            reset_data_date1.innerHTML = "clear";
+            reset_data_date1.className = 'filterlabel';
+            reset_data_date1.onclick = function() {
+                tail.DateTime("#dat_data_date1", {
+                    dateStart: 1743044400000,
+                    dateEnd: 1743044400000,
+                    dateFormat: 'YYYY-mm-dd',
+                    timeFormat: false,
+                    today: false,
+                    weekStart: 1,
+                    position: "left",
+                    closeButton: true,
+                    timeStepMinutes:1,
+                    timeStepSeconds: 1
+                }).selectDate(2025,3-1,27,0,0,0);
+                tail.DateTime("#dat_data_date1").reload()
+            }
+            document.getElementById("div_data_date1").appendChild(
+                reset_data_date1);
+            document.addEventListener("DOMContentLoaded", function(){
+                tail.DateTime("#dat_data_date1", {
+                    dateStart: 1743044400000,
+                    dateEnd: 1743044400000,
+                    dateFormat: 'YYYY-mm-dd',
+                    timeFormat: false,
+                    today: false,
+                    weekStart: 1,
+                    position: "left",
+                    closeButton: true,
+                    timeStepMinutes:1,
+                    timeStepSeconds: 1
+                }).selectDate(2025,3-1,27,0,0,0);
+                tail.DateTime("#dat_data_date1").reload()
+                tail.DateTime("#dat_data_date2", {
+                    dateStart: 1743044400000,
+                    dateEnd: 1743044400000,
+                    dateFormat: 'YYYY-mm-dd',
+                    timeFormat: false,
+                    today: false,
+                    weekStart: 1,
+                    position: "left",
+                    closeButton: true,
+                    timeStepMinutes:1,
+                    timeStepSeconds: 1
+                }).selectDate(2025,3-1,27,0,0,0);
+                tail.DateTime("#dat_data_date2").reload()
+                filterFunc()
+                dat_data_date1.onchange = function(){filterFunc()};
+                dat_data_date2.onchange = function(){filterFunc()};
+            });
+            var div_data_date2 = document.createElement("div");
+            div_data_date2.id = "div_data_date2";
+            div_data_date2.className= "filterselect";
+            document.getElementById("menu").appendChild(div_data_date2);
+            dat_data_date2 = document.createElement('input');
+            dat_data_date2.type = "text";
+            dat_data_date2.id = "dat_data_date2";
+            div_data_date2.appendChild(dat_data_date2);
+            var lab_data_date2 = document.createElement('div');
+            lab_data_date2.innerHTML  = 'data till';
+            lab_data_date2.className = 'filterlabel';
+            document.getElementById("div_data_date2")
+              .appendChild(lab_data_date2);
+            var reset_data_date2 = document.createElement('div');
+            reset_data_date2.innerHTML = "clear";
+            reset_data_date2.className = 'filterlabel';
+            reset_data_date2.onclick = function() {
+                tail.DateTime("#dat_data_date2", {
+                    dateStart: 1743044400000,
+                    dateEnd: 1743044400000,
+                    dateFormat: 'YYYY-mm-dd',
+                    timeFormat: false,
+                    today: false,
+                    weekStart: 1,
+                    position: "left",
+                    closeButton: true,
+                    timeStepMinutes:1,
+                    timeStepSeconds: 1
+                }).selectDate(2025,3-1,27,0,0,0);
+                tail.DateTime("#dat_data_date2").reload()
+            }
+            document.getElementById("div_data_date2").appendChild(
+                reset_data_date2);
+            document.getElementById("menu").appendChild(
+                document.createElement("div"));
+            var div_id = document.createElement("div");
+            div_id.id = "div_id";
+            div_id.className = "slider";
+            document.getElementById("menu").appendChild(div_id);
+            var lab_id = document.createElement('div');
+            lab_id.innerHTML  = 'id: <span id="val_id"></span>';
+            lab_id.className = 'filterlabel';
+            document.getElementById("menu").appendChild(lab_id);
+            var reset_id = document.createElement('div');
+            reset_id.innerHTML = 'clear filter';
+            reset_id.className = 'filterlabel';
+            lab_id.className = 'filterlabel';
+            reset_id.onclick = function() {
+                sel_id.noUiSlider.reset();
+            };
+            document.getElementById("menu").appendChild(reset_id);
+            var sel_id = document.getElementById('div_id');
+            noUiSlider.create(sel_id, {
+                connect: true,
+                start: [1, 2],
+                step: 1,
+                format: wNumb({
+                    decimals: 0,
+                    }),
+                range: {
+                min: 1,
+                max: 2
+                }
+            });
+            sel_id.noUiSlider.on('update', function (values) {
+            filterVals =[];
+            for (value in values){
+            filterVals.push(parseInt(value))
+            }
+            val_id = document.getElementById('val_id');
+            val_id.innerHTML = values.join(' - ');
+                filterFunc()
+            });
+            document.getElementById("menu").appendChild(
+                document.createElement("div"));
+            var div_cidade = document.createElement('div');
+            div_cidade.id = "div_cidade";
+            div_cidade.className= "filterselect";
+            document.getElementById("menu").appendChild(div_cidade);
+            sel_cidade = document.createElement('select');
+            sel_cidade.multiple = true;
+            sel_cidade.size = 1;
+            sel_cidade.id = "sel_cidade";
+            var cidade_options_str = "<option value='' unselected></option>";
+            sel_cidade.onchange = function(){filterFunc()};
+            cidade_options_str  += '<option value="Presidente Prudente">Presidente Prudente</option>';
+            sel_cidade.innerHTML = cidade_options_str;
+            div_cidade.appendChild(sel_cidade);
+            var lab_cidade = document.createElement('div');
+            lab_cidade.innerHTML = 'cidade';
+            lab_cidade.className = 'filterlabel';
+            div_cidade.appendChild(lab_cidade);
+            var reset_cidade = document.createElement('div');
+            reset_cidade.innerHTML = 'clear filter';
+            reset_cidade.className = 'filterlabel';
+            reset_cidade.onclick = function() {
+                var options = document.getElementById("sel_cidade").options;
+                for (var i=0; i < options.length; i++) {
+                    options[i].selected = false;
+                }
+                filterFunc();
+            };
+            div_cidade.appendChild(reset_cidade);
+            document.getElementById("menu").appendChild(
+                document.createElement("div"));
+            var div_estado = document.createElement('div');
+            div_estado.id = "div_estado";
+            div_estado.className= "filterselect";
+            document.getElementById("menu").appendChild(div_estado);
+            sel_estado = document.createElement('select');
+            sel_estado.multiple = true;
+            sel_estado.size = 1;
+            sel_estado.id = "sel_estado";
+            var estado_options_str = "<option value='' unselected></option>";
+            sel_estado.onchange = function(){filterFunc()};
+            estado_options_str  += '<option value="SP">SP</option>';
+            sel_estado.innerHTML = estado_options_str;
+            div_estado.appendChild(sel_estado);
+            var lab_estado = document.createElement('div');
+            lab_estado.innerHTML = 'estado';
+            lab_estado.className = 'filterlabel';
+            div_estado.appendChild(lab_estado);
+            var reset_estado = document.createElement('div');
+            reset_estado.innerHTML = 'clear filter';
+            reset_estado.className = 'filterlabel';
+            reset_estado.onclick = function() {
+                var options = document.getElementById("sel_estado").options;
+                for (var i=0; i < options.length; i++) {
+                    options[i].selected = false;
+                }
+                filterFunc();
+            };
+            div_estado.appendChild(reset_estado);
+            document.getElementById("menu").appendChild(
+                document.createElement("div"));
+            var div_nome = document.createElement('div');
+            div_nome.id = "div_nome";
+            div_nome.className= "filterselect";
+            document.getElementById("menu").appendChild(div_nome);
+            sel_nome = document.createElement('select');
+            sel_nome.multiple = true;
+            sel_nome.size = 1;
+            sel_nome.id = "sel_nome";
+            var nome_options_str = "<option value='' unselected></option>";
+            sel_nome.onchange = function(){filterFunc()};
+            nome_options_str  += '<option value="FCT UNESP">FCT UNESP</option>';
+            sel_nome.innerHTML = nome_options_str;
+            div_nome.appendChild(sel_nome);
+            var lab_nome = document.createElement('div');
+            lab_nome.innerHTML = 'nome';
+            lab_nome.className = 'filterlabel';
+            div_nome.appendChild(lab_nome);
+            var reset_nome = document.createElement('div');
+            reset_nome.innerHTML = 'clear filter';
+            reset_nome.className = 'filterlabel';
+            reset_nome.onclick = function() {
+                var options = document.getElementById("sel_nome").options;
+                for (var i=0; i < options.length; i++) {
+                    options[i].selected = false;
+                }
+                filterFunc();
+            };
+            div_nome.appendChild(reset_nome);
+            document.getElementById("menu").appendChild(
+                document.createElement("div"));
+            var div_pais = document.createElement('div');
+            div_pais.id = "div_pais";
+            div_pais.className= "filterselect";
+            document.getElementById("menu").appendChild(div_pais);
+            sel_pais = document.createElement('select');
+            sel_pais.multiple = true;
+            sel_pais.size = 1;
+            sel_pais.id = "sel_pais";
+            var pais_options_str = "<option value='' unselected></option>";
+            sel_pais.onchange = function(){filterFunc()};
+            pais_options_str  += '<option value="Brasil">Brasil</option>';
+            sel_pais.innerHTML = pais_options_str;
+            div_pais.appendChild(sel_pais);
+            var lab_pais = document.createElement('div');
+            lab_pais.innerHTML = 'pais';
+            lab_pais.className = 'filterlabel';
+            div_pais.appendChild(lab_pais);
+            var reset_pais = document.createElement('div');
+            reset_pais.innerHTML = 'clear filter';
+            reset_pais.className = 'filterlabel';
+            reset_pais.onclick = function() {
+                var options = document.getElementById("sel_pais").options;
+                for (var i=0; i < options.length; i++) {
+                    options[i].selected = false;
+                }
+                filterFunc();
+            };
+            div_pais.appendChild(reset_pais);
+        </script>
+    </body>
+</html>
